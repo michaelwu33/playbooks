@@ -1,0 +1,10 @@
+[Unit]
+Description=The JBCS Apache HTTP Server
+
+[Service]
+Type=forking
+ExecStart={{ httpd_home }}/sbin/apachectl start
+ExecRestart={{ httpd_home }}/sbin/apachectl restart
+ExecStop={{ httpd_home }}/sbin/apachectl stop
+
+[Install]

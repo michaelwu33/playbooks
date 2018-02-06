@@ -1,0 +1,57 @@
+---
+# tasks file for roles/jbcs-httpd
+
+  - name: Make sure base directory is present
+    file:
+      path: "{{ basedir }}"
+      state: directory
+      recurse: true
+      owner: root
+      group: root
+      mode: 0755
+  
+  - name: Make sure {{ httpd_home }} is clean
+    stat:
+      path: "{{ httpd_home  }}"
+    register: st
+  - fail: 
+      msg: "{{ httpd_home }} is already exists. Installation stopped!"                    
+    when: st.stat.exists
+
+  - name: install prerequiste packages
+    yum:
+      name: "{{ item }}"
+    with_items: "{{ prerequiste_pkgs }}"
+
+  - name: Retrieve and extract packge to base directory
+    unarchive:
+      src: "{{ url_pkg }}"
+      dest: "{{ basedir }}"
+      remote_src: yes
+      validate_certs: false
+  
+  - name: Run postinstall tasks
+    shell: "{{ httpd_home }}/.postinstall"
+    args:
+      chdir: "{{ httpd_home }}"
+
+  - name: Setup ownership for {{ httpd_home }}
+    file:
+      path: "{{ httpd_home }}"
+      state: directory
+      recurse: true
+      owner: apache
+      group: apache
+  
+  - name: Setup service file
+    template:
+      src: jbcs-httpd.service
+      dest: "{{ httpd_service_file }}"
+  
+  - name: Setup listening IP address
+    lineinfile:
+      line: "Listen {{ httpd_listen_ip }}:80"
+      regexp: "^Listen 127.0.0.1:80"
+      path: "{{ httpd_config_file }}"
+
+

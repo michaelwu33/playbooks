@@ -1,0 +1,12 @@
+---
+# defaults file for roles/jbcs-httpd
+
+basedir: /opt
+httpd_home: "{{ basedir }}/jbcs-httpd24-2.4/httpd"
+httpd_service_file: /usr/lib/systemd/system/jbcs-httpd.service
+httpd_config_file: "{{ httpd_home }}/conf/httpd.conf"
+httpd_listen_ip: "{{ ansible_default_ipv4.address }}"
+
+prerequiste_pkgs:
+  - mailcap
+  - links

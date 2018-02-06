@@ -1,0 +1,17 @@
+---
+- name: Build Red Hat JBoss Core Service Apache HTTP Server
+  hosts: all
+  become: true
+  vars_prompt:
+    - name: url_pkg
+      prompt: "URL to HTTPD binary archive"
+      private: false
+      default: http://10.0.2.6/repos/jbcs-httpd24-httpd-2.4.23-RHEL7-x86_64.zip
+    - name: basedir
+      prompt: "Base directory to where HTTPD to install. HTTPD_HOME will be $base/jbcs-httpd24-2.4/httpd"
+      default: /opt
+      private: false  
+  
+  roles:
+    - role: jbcs-httpd
+
