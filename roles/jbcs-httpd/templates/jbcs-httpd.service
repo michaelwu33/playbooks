@@ -4,7 +4,7 @@ Description=The JBCS Apache HTTP Server
 [Service]
 Type=forking
 ExecStart={{ httpd_home }}/sbin/apachectl start
-ExecRestart={{ httpd_home }}/sbin/apachectl restart
+ExecReload={{ httpd_home }}/sbin/apachectl graceful
 ExecStop={{ httpd_home }}/sbin/apachectl stop
 
 [Install]
