@@ -1,0 +1,134 @@
+---
+#
+#
+- name: Playbook to apply patch to JBoss
+  hosts: all
+  become: true
+
+  vars_prompt:
+    - name: app_home
+      prompt: "Application Home"
+      private: false
+      default: "/opt/apps"
+    - name: patch_url
+      prompt: URL to patch file"
+      private: false
+      default: "http://server-ip/jboss/jboss-eap-7.0.9-patch.zip"
+    - name: user_admin
+      prompt: "JBoss Admin User"
+      private: false
+      default: admin
+    - name: user_admin_pwd
+      prompt: "JBoss Admin Password"
+      private: true
+
+  vars:
+    patchfile: "/tmp/{{ patch_url | basename }}"
+
+  pre_tasks:
+  - name: Check JBoss CLI script
+    stat:
+      path: "{{ app_home }}/Middleware/MiddlewareApp/bin/jboss-cli.sh"
+    register: cli
+  
+  - fail:
+      msg: "JBoss CLI script does not exist or it is not executable"
+    when: cli.stat.exists == False or cli.stat.xusr == False
+
+  - name: Check JBoss startup script
+    stat:
+      path: "{{ app_home }}/Middleware/scripts/start-jboss.sh"
+    register: start
+
+  - name: check JBoss shutdown script
+    stat: path="{{ app_home }}/Middleware/scripts/stop-jboss.sh"
+    register: stop
+
+  - fail: msg="JBoss start/stop script is NOT executable"
+    when: start.stat.xusr == False or stop.stat.xusr == False
+    
+  - name: Get JBoss configuration file
+    stat: path="{{ app_home }}/Middleware/scripts/env-jboss.conf"
+    register: config
+
+  - fail: msg="JBoss config file does not exists or it is not a regular file"
+    when: config.stat.exists == False or config.stat.isreg == False
+
+  - name: Get RUN Account from config file
+    shell: "grep RUN_USER {{app_home}}/Middleware/scripts/env-jboss.conf | cut -d '=' -f 2"
+    register: user_run
+    changed_when: false
+
+  - name: Get Port Offset from config file
+    shell: "grep JBOSS_PORT_OFFSET {{app_home}}/Middleware/scripts/env-jboss.conf | cut -d '=' -f 2"
+    register: port_offset
+    changed_when: false
+
+  - name: Get Jboss Mgmt IP from config file
+    shell: "grep JBOSS_IP_MANAGEMENT {{app_home}}/Middleware/scripts/env-jboss.conf | cut -d '=' -f 2"
+    register: ip_mgmt
+    changed_when: false
+
+  - fail: msg="Run account={{ user_run.stdout }}, mgmt IP={{ ip_mgmt.stdout }}, offset={{ port_offset }}"
+    when: user_run.stdout == '' or port_offset.stdout == '' or ip_mgmt.stdout == ''
+
+  tasks:
+
+    - name: Check JBoss instance status
+      shell: "{{ app_home }}/Middleware/scripts/check-jboss.sh"
+      become: true
+      become_user: "{{ user_run.stdout }}"
+      failed_when: false
+      register: jboss1
+
+    - name: Start JBoss instance if it is currently stopped
+      shell: "nohup {{ app_home }}/Middleware/scripts/start-jboss.sh &"
+      become: true
+      become_user: "{{ user_run.stdout }}"
+      async: 20
+      poll: 0
+      when: jboss1.rc == 1
+
+    - name: Check JBoss status again (via mgmt port)
+      wait_for:
+        host: "{{ ip_mgmt.stdout }}"
+        port: "{{ ((port_offset.stdout)|int + 9990) }}"
+        state: started
+        delay: 2 
+      when: jboss1.rc == 1
+      failed_when: false
+
+    - block:
+      - name: download patch file
+        get_url:
+          url: "{{ patch_url }}"
+          dest: "{{ patchfile }}"
+
+      - name: Apply for patch
+        shell: "{{ app_home }}/Middleware/MiddlewareApp/bin/jboss-cli.sh --controller={{ ip_mgmt.stdout }}:{{ ((port_offset.stdout)|int + 9990) }} -u={{ user_admin }} -p={{ user_admin_pwd }} 'patch apply {{ patchfile }}'"
+        become: true
+        become_user: "{{ user_run.stdout }}"
+        ignore_errors: true
+        register: patchresult
+
+      - name: Stop JBoss instance if patch is done succefully for taking effect of new patch
+        shell: "{{ app_home }}/Middleware/scripts/stop-jboss.sh"
+        become: true
+        become_user: "{{ user_run.stdout }}"
+        when: patchresult.rc == 0
+
+      always:
+      - name: clean up
+        file:
+          path: "{{ patchfile }}"
+          state: absent
+      
+      - name: bring up JBoss if it was original up
+        shell: "nohup {{ app_home }}/Middleware/scripts/start-jboss.sh &"
+        become: true
+        become_user: "{{ user_run.stdout }}"
+        when: jboss1.rc == 0
+
+
+
+  

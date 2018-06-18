@@ -1,0 +1,20 @@
+---
+# tasks file for roles/jws-tomcat
+
+#
+# Author: Michael Wu, michael.wu@...
+#         March 2018
+#
+
+- name: "Validation: no existing installed middleware"
+  stat:
+    path: "{{ apphome }}/Middleware"
+  register: st
+- fail:
+    msg: "{{ apphome }}/Middleware is already existed"
+  when: st.stat.exists
+
+#
+# parameter validation will be done in future phrase
+# as per team meeting discussion 03/21
+#

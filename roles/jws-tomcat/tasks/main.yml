@@ -1,0 +1,94 @@
+---
+# tasks file for roles/jws-tomcat
+
+#
+# Author: Michael Wu, michael.wu@...
+#         March 2018
+#
+
+- name: Validate survey parameters
+  include_tasks: doSurveyValidation.yml
+
+- name: set/get some Facts based on survey input
+  include_tasks: setExtraParms.yml
+
+- name: import parameter files userparms and sysparms
+  debug:
+    msg: "reserved for importing of user/system parameters"
+
+- name: validate user/system parameters
+  include_tasks: doParamValidation.yml
+
+- name: "prerequistes: remove conflic packages if any"
+  yum:
+    name: "{{item}}"
+    state: absent
+  with_items: "{{prerequiste_pkgs_remove}}"
+  when: item != ""
+
+- name: "prerequistes: install required packages"
+  yum:
+    name: "{{item}}"
+    state: present
+  with_items: "{{prerequiste_pkgs_install}}"
+  when: item != ""
+
+- name: create application home
+  file:
+    path: "{{ apphome }}"
+    state: directory
+    recurse: yes
+    owner: "{{ usermso }}"
+    group: "{{ usergrp }}"
+    mode: 0775
+  
+- name: Get and extract packages to {{apphome}}/Middleware
+  unarchive:
+    src: "{{ url_pkg }}"
+    dest: "{{ apphome }}"
+    remote_src: yes
+    validate_certs: false
+
+- name: set environment configuartion file
+  template:
+    src: templates/env.conf.j2
+    dest: "{{ mw_custom_script_dir }}/env.conf"
+    mode: 0400
+
+- name: set ownership for {{ usermso }} owned directories
+  file:
+    path: "{{ item }}"
+    recurse: yes
+    owner: "{{ usermso }}"
+    group: "{{ usergrp }}"
+  with_items: "{{ usermso_owned_dirs }}"
+
+- name: set ownership for {{ userrun }} owned directories
+  file:
+    path: "{{ item }}"
+    recurse: yes
+    owner: "{{ userrun }}"
+    group: "{{ usergrp }}"
+  with_items: "{{ userrun_owned_dirs }}"
+
+#- name: remove conflict entries in userrun's startup profile
+ 
+- name: set {{ userrun }}'s startup profile
+  blockinfile:
+    path: "{{ userrun_profile }}"
+    block: | 
+      #
+      # added by jws installation
+      alias jws-start='{{ mw_start }}'
+      alias jws-stop='{{ mw_stop }}'
+      alias jws-check='{{ mw_check }}'
+      export MW_HOME={{ mw_home }}
+      export MW_CUSTOM_SCRIPT_DIR={{ mw_custom_script_dir }}
+      
+    create: yes
+    marker: ""
+    owner: "{{ userrun }}"
+    group: "{{ usergrp }}"
+    mode: 0644
+
+#- name: cleanup

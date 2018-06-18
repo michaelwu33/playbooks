@@ -1,0 +1,24 @@
+---
+# defaults file for roles/jws-tomcat
+
+url_pkg: http://127.0.0.1
+apphome: /opt/michwu
+usermso: michwu
+userrun: michwu
+usergrp: michwu
+
+
+prerequiste_pkgs_remove:
+  - tomcatjss
+
+prerequiste_pkgs_install: ""
+
+usermso_owned_dirs:
+  - "{{ apphome }}/Middleware"
+
+userrun_owned_dirs:
+  - "{{ apphome }}/Middleware/scripts"
+  - "{{ mw_home }}/logs"
+  - "{{ mw_home }}/temp"
+  - "{{ mw_home }}/webapps"
+  - "{{ mw_home }}/work"

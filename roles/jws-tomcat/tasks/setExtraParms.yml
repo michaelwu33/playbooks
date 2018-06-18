@@ -1,0 +1,23 @@
+---
+#
+# Author: Michael Wu, michael.wu@...
+#         March 2018
+#
+
+- name: set extra environment variables
+  set_fact:
+    java_home: "{{ apphome }}/Middleware/JAVA"
+    mw_home: "{{ apphome }}/Middleware/MiddlewareApp"
+    mw_user: "{{ userrun }}"
+    mw_custom_script_dir: "{{ apphome }}/Middleware/scripts"
+
+- name: set start/stop/check script name
+  set_fact:
+    mw_start: "{{ mw_custom_script_dir }}/start.sh"
+    mw_stop:  "{{ mw_custom_script_dir }}/stop.sh"
+    mw_check: "{{ mw_custom_script_dir }}/check.sh"
+
+- name: set run user's startup profile
+  set_fact:
+    userrun_profile: "{{ userrun_home }}/.bashrc"
+    usermso_profile: "{{ usermso_home }}/.bashrc"

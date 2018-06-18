@@ -1,0 +1,33 @@
+---
+#
+# Author: Michael Wu, michael.wu@...
+#         March 2018
+#
+- name: Build Red Hat JBoss Web Server - Tomcat
+  hosts: tomcat1
+  become: true
+  vars_prompt:
+    - name: url_pkg
+      prompt: "URL to get JWS package"
+      private: false
+      default: http://server-op/jboss/jws3.tar.gz
+    - name: apphome
+      prompt: "Base directory to where JWS installed"
+      default: /opt/michwu
+      private: false
+    - name: usermso
+      prompt: "Master Account"
+      private: false
+      default: michwu
+    - name: userrun
+      prompt: "Run Account"
+      private: false
+      default: michwurun
+    - name: usergrp
+      prompt: "Group"
+      private: false
+      default: michwugrp
+  
+  roles:
+    - role: jws-tomcat
+

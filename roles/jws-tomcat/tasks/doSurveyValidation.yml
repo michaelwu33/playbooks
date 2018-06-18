@@ -1,0 +1,90 @@
+---
+# tasks file for roles/jws-tomcat
+
+#
+# Author: Michael Wu, michael.wu@...
+#         March 2018
+#
+
+- name: Assume survey parameters are input correctly
+  fail:
+    msg: |
+      URL, app home, mso, run, and group MUST be input!
+
+      PKG URL = {{url_pkg}}
+      apphome = {{apphome}}
+      usermso = {{usermso}}
+      userrun = {{userrun}}
+      uesrgrp = {{usergrp}}
+  when: url_pkg == "" or apphome == "" or usermso == "" or userrun == "" or usergrp == ""
+
+#- name: remote package exists and downloadable
+#  uri:
+#    url: "{{ url_pkg }}"
+#    state_code: 200
+
+- name: if mso user {{ usermso }} exists
+  getent:
+    database: passwd
+    key: "{{ usermso }}"
+  
+- name: get mso user's primary gid, home directory
+  set_fact:
+    usermso_pgid: "{{ getent_passwd[usermso][2] }}"
+    usermso_home: "{{ getent_passwd[usermso][4] }}"
+
+- name: if run user {{ userrun }} exists
+  getent:
+    database: passwd
+    key: "{{ userrun }}"
+- name: get run user's primary gid, home directory
+  set_fact:
+    userrun_pgid: "{{ getent_passwd[userrun][2] }}"
+    userrun_home: "{{ getent_passwd[userrun][4] }}"
+
+- name: if group {{ usergrp }} exists
+  getent:
+    database: group
+    key: "{{ usergrp }}"
+- name: get {{ usergrp }}'s gid, members
+  set_fact:
+    usergrp_gid: "{{ getent_group[usergrp][1] }}"
+    usergrp_members: "{{ getent_group[usergrp][2] }}"
+
+#- debug:
+#    msg: |
+#     usermso_pgid = {{ usermso_pgid }}
+#     usermso_home = {{ usermso_home }}
+#     userrun_pgid = {{ userrun_pgid }}
+#     userrun_home = {{ userrun_home }}
+#     usergrp_gid  = {{ usergrp_gid}}
+#     usergrp_members = {{ usergrp_members }}
+
+- name: make sure {{ usermso }} and {{ userrun }} are members of group {{ usergrp }}?
+  fail:
+    msg: |
+     Error: {{ usermso }} and {{ userrun }} should belong to same group {{ usergrp }}.
+     
+     {{ usermso }}'s primary group = {{ usermso_pgid }}
+     {{ userrun }}'s primary group = {{ userrun_pgid }}
+     group {{ usergrp }}'s ID  = {{ usergrp_gid}}
+     group {{ usergrp }}'s member are = {{ usergrp_members }}
+  when: not ((usermso_pgid == usergrp_gid or userrun_pgid == usergrp_gid) or (usermso in usergrp_members and userrun in usergrp_members))
+
+- name: make sure {{ usermso }}'s home directory is present
+  file:
+    path: "{{ usermso_home }}"
+    state: directory
+    recurse: true
+    owner: "{{ usermso }}"
+    group: "{{ usergrp }}"
+    mode: 0700
+
+- name: make sure {{ userrun }}'s home directory is present
+  file:
+    path: "{{ userrun_home }}"
+    state: directory
+    recurse: true
+    owner: "{{ userrun }}"
+    group: "{{ usergrp }}"
+    mode: 0700
