@@ -1,0 +1,6 @@
+---
+- name: install python3.6 packages
+  hosts: all
+  become: true
+  roles:
+    - role: python36

@@ -1,0 +1,8 @@
+---
+# defaults file for python36
+
+packages:
+  - python36-3.6.6-5.el7
+  - python36-libs-3.6.6-5.el7
+  - python36-setuptools-39.2.0-3.el7
+  - python36-pip-8.1.2-8.el7

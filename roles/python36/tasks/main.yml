@@ -1,0 +1,7 @@
+---
+# tasks file for python36
+
+- name: "install python3.6 packages, list of packages are defined in defaults"
+  yum:
+    name: "{{ packages }}"  # new feature. with_items has been deprecated since 2.5
+    state: present
