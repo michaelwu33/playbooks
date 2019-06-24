@@ -1,0 +1,74 @@
+---
+- name: Playbook to create ad-hoc volume and file system
+  hosts: all
+  become: yes
+  vars_prompt:
+    - name: vg
+      prompt: "What is the volume group? "
+      default: vg_app
+      private: no
+    - name: lv
+      prompt: "What is the logical volume? "
+      default: lv_
+      private: no
+    - name: size
+      prompt: "How large is it(GB)? "
+      default: 5
+      private: no
+    - name: mp
+      prompt: "Where is the mount point? "
+      default: "/path/to/mountpoint"
+      private: no
+  tasks:
+    - name: assume required parameters are set
+      assert:
+        that: >
+          vg is defined and vg != ''
+          and lv is defined and lv != ''
+          and size is defined and size != '' and size|int > 0
+          and mp is defined and mp != ''
+        msg: |
+          Required parameters should be present!
+            volume group: {{ vg }}
+            logical volume: {{ lv }}
+            volume size: {{ size }}
+            mount point: {{ mp }}
+
+    - name: there is no mounted file system on {{ mp }}
+      shell: /usr/bin/mountpoint -q {{ mp }}
+      register: st_mp
+      changed_when: false
+      failed_when: st_mp.rc == 0
+
+    - name: "{{ mp }} should be a directory if it is already existed"
+      stat:
+        path: "{{ mp }}"
+      register: st_mp
+      changed_when: false
+      failed_when: st_mp.stat.exists and not st_mp.stat.isdir
+
+    - name: create mount point if it does not exist
+      file:
+        path: "{{ mp }}"
+        state: directory
+        recurse: true
+      when: not st_mp.stat.exists
+
+    - name: create logical volume {{ lv }} on volume group {{ vg }} with size {{ size }}GB
+      lvol:
+        vg: "{{ vg }}"
+        lv: "{{ lv }}"
+        size: "{{ size}}G"
+        state: present
+
+    - name: create file system on logical volume {{ lv }}
+      filesystem:
+        fstype: xfs
+        dev: /dev/{{ vg }}/{{ lv }}
+
+    - name: mount the file system to {{ mp }} and configure it to auto mount upon reboot if needed
+      mount:
+        fstype: xfs
+        path: "{{ mp }}"
+        src: "/dev/mapper/{{ vg }}-{{ lv }}"
+        state: mounted
